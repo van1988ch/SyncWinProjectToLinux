@@ -35,14 +35,14 @@ def SSHFileSync(FtpClient):
         else:#上传新增加的文件
             print "Upload New:" ,  file ,  szPath
             FtpClient.put(file ,  szPath)
-            if file.find(Config.CMakeListFileName) != -1:
-                    CmakeFileName =  Config.CMakeListFileName
+            CmakeFileName =  Config.CMakeListFileName
                  
     for file in entry:#删除的文件
         szPath = WinDir2LinuxDir(file ,  szDir)
         if file not in fileModifyTimeMap:
             print "Delete:" ,  file ,  szPath
             FtpClient.remove(szPath)
+            CmakeFileName =  Config.CMakeListFileName
         
     FileLastModifyTime.WriteFilesTime(Config.MeteData ,  fileModifyTimeMap)
     return CmakeFileName

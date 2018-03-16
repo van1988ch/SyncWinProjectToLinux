@@ -1,12 +1,12 @@
 SyncWinProjectToLinux
 ====
-##描述:
+## 描述:
 - 项目开发语言PYTHON。
 - 项目功能在windows下面写代码，自动增量同步到linux机器上面，同时执行远程执行shell命令。
 - 配合cmake，和make自动生成二进制代码。
 - 自动目录生成
 
-##配置:
+## 配置:
   配置文件可以可以指定多套.然后通过命令行来指定使用哪个配置文件来同步到不同的服务器
 ```
 [global]
@@ -30,7 +30,7 @@ CMakeListFileName = CMakeLists.txt
 ShellCMD=cd /home/*****/Project2/?/src
 ```
 
-##命令行:
+## 命令行:
 python SyncWinProjectToLinux.py config.ini xxx
 config.ini指定的配置文件上传到那个服务器
 xxx 指定的配置文件ProjectRoot目录项目的项目目录

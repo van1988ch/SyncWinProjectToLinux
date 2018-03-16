@@ -2,53 +2,117 @@
 
 import os
 import sys
-import Config
 import paramiko
-from SshManager import FileLastModifyTime 
-##########
-#####
-#######
-############
-############
-############
+import ConfigParser
+import pickle
+import sys
+reload(sys)
+
+sys.setdefaultencoding('utf-8')
+
+g_Config = {}
+def ReadCfg(cfgFilePath):
+    config=ConfigParser.ConfigParser()
+    config.read(cfgFilePath)
+    g_Config["Server"] = config.get("global","Server")
+    g_Config["ServerPort"] = int(config.get("global","ServerPort"))
+    g_Config["Username"] = config.get("global","Username")
+    g_Config["Passwd"] = config.get("global","Passwd")
+    g_Config["ProjectRoot"] = config.get("global","ProjectRoot")
+    g_Config["RemoteRoot"] = config.get("global","RemoteRoot")
+    g_Config["ProjectName"] = config.get("global","ProjectName")
+    g_Config["SyncFileExt"] = config.get("global","SyncFileExt")
+    g_Config["MeteData"] = g_Config["ProjectName"]
+    g_Config["CMakeListFileName"] = config.get("global","CMakeListFileName")
+    g_Config["ShellCMD"] = config.get("global","ShellCMD")
+    g_Config["ShellCMD"] += " ;"
+
+
+def FilesLastModifyTime(fileNames):
+    filesModifyTime = {}
+    for file in fileNames:
+        filesModifyTime[file] = os.stat(file).st_mtime
+    return filesModifyTime
+
+def FindExtInDir(dirPath ,  exts):
+    list = exts.split(',')
+    fileNames = []
+    dirs = []
+    for dir  in os.walk(dirPath):
+        if dir[0].find(g_Config["ProjectRoot"]+"/"+g_Config["ProjectName"]+"/.svn") == -1:
+            linuxdir = dir[0][len(g_Config["ProjectRoot"]+"/"+g_Config["ProjectName"]+"/"):].replace("/" ,  "/")
+            if linuxdir != '':
+                dirs.append(g_Config["RemoteRoot"]+g_Config["ProjectName"]+'/'+linuxdir)
+            for filename in dir[2]:
+                sufix = os.path.splitext(filename)[1][1:]
+                for ext in list:
+                    if ext == sufix :
+                        fullFilePath = dir[0] + "/" + filename
+                        fileNames.append(fullFilePath);
+    return fileNames , dirs;
+
+    
+def WriteFilesTime(path , fileModifyTimeMap):
+    with open ( path , 'wb' ) as file : 
+        pickle.dump( fileModifyTimeMap , file )
+
+def ReadFilesTime(path):
+    try:
+        with open ( path , 'rb' ) as file: 
+            entry = pickle.load(file)
+    except IOError:
+        return []
+    else:
+        return entry
+
+
 def WinDir2LinuxDir(winFilePath ,  winDirPath):
     (filepath,filename)=os.path.split(winFilePath)
-    str = Config.RemoteRoot
+    str = g_Config["RemoteRoot"]
     relativePath = winFilePath.replace(winDirPath ,  "")
-    linuxrelativePath  = relativePath.replace("\\" ,  "/")
-    str += Config.ProjectName
+    linuxrelativePath  = relativePath.replace("/" ,  "/")
+    str += g_Config["ProjectName"]
     str += linuxrelativePath
     return str
 
-def SSHFileSync(FtpClient):
-    entry = FileLastModifyTime.ReadFilesTime(Config.MeteData)
-    szDir = Config.ProjectRoot + "\\" + Config.ProjectName
-    fileNames = FileLastModifyTime.FindExtInDir(szDir ,  Config.SyncFileExt)
-    fileModifyTimeMap = FileLastModifyTime.FilesLastModifyTime(fileNames)
+def SSHFileSync(ssh , FtpClient):
+    entry = ReadFilesTime(g_Config["configFileName"]+"_"+g_Config["MeteData"])
+    szDir = g_Config["ProjectRoot"] + "/" + g_Config["ProjectName"]
+    fileNames , dirs = FindExtInDir(szDir ,  g_Config["SyncFileExt"])
+    fileModifyTimeMap = FilesLastModifyTime(fileNames) 
+    if len(entry) == 0 :
+        for dir in dirs:
+            command = "mkdir -p " + dir
+            print command
+            ssh.exec_command(command)
+
     CmakeFileName = ""
     
     for file in fileModifyTimeMap:
         szPath = WinDir2LinuxDir(file ,  szDir)
        
-        if file in entry:#上传修改过的文件
+        if file in entry:#涓婁紶淇敼杩囩殑鏂囦欢
             if fileModifyTimeMap[file] > entry[file]:
                 print "Modify:"  ,  file ,  szPath
                 FtpClient.put(file ,  szPath)
-                if file.find(Config.CMakeListFileName) != -1:
-                    CmakeFileName = Config.CMakeListFileName
-        else:#上传新增加的文件
+                if file.find(g_Config["CMakeListFileName"]) != -1:
+                    CmakeFileName = g_Config["CMakeListFileName"]
+        else:#涓婁紶鏂板鍔犵殑鏂囦欢
             print "Upload New:" ,  file ,  szPath
-            FtpClient.put(file ,  szPath)
-            CmakeFileName =  Config.CMakeListFileName
+            try:
+                FtpClient.put(file ,  szPath)
+            except:
+                print file ,  szPath
+            CmakeFileName =  g_Config["CMakeListFileName"]
                  
-    for file in entry:#删除的文件
+    for file in entry:#鍒犻櫎鐨勬枃浠�
         szPath = WinDir2LinuxDir(file ,  szDir)
         if file not in fileModifyTimeMap:
             print "Delete:" ,  file ,  szPath
             FtpClient.remove(szPath)
-            CmakeFileName =  Config.CMakeListFileName
+            CmakeFileName =  g_Config["CMakeListFileName"]
         
-    FileLastModifyTime.WriteFilesTime(Config.MeteData ,  fileModifyTimeMap)
+    WriteFilesTime(g_Config["configFileName"]+"_"+g_Config["MeteData"] ,  fileModifyTimeMap)
     return CmakeFileName
 
 def ChangeDir():
@@ -56,22 +120,32 @@ def ChangeDir():
     os.chdir(exePath)
 
 def main():
-    if len(sys.argv) < 2:
-        print "Useage:Commond [ProjectName=?] \n If no project name ,will use default project name in config file!"
+    if len(sys.argv) < 3:
+        print "Useage:Commond [config=?][ProjectName=?] \n"
+        return 
     
     ChangeDir()
-    Config.ReadCfg("config.ini")
-    if len(sys.argv) == 2:
-        Config.ProjectName = sys.argv[1]
-        Config.MeteData = sys.argv[1]
+    g_Config["configFileName"] = sys.argv[1]
+    try:
+        ReadCfg(g_Config["configFileName"])
+    except:
+        print "read config error."
+        return
+    
+    g_Config["ProjectName"] = sys.argv[2]
+    g_Config["MeteData"] = sys.argv[2]
     
     ssh = paramiko.SSHClient()
     ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-    ssh.connect(Config.Server ,  username = Config.Username,  password = Config.Passwd)
+    ssh.connect(g_Config["Server"] , g_Config["ServerPort"] , username = g_Config["Username"],  password = g_Config["Passwd"])
     FtpClient = ssh.open_sftp()
-    Cmake =  SSHFileSync(FtpClient)
-    szShellCmd = Config.ShellCMD.replace("?" ,  Config.ProjectName)
-    if Cmake == Config.CMakeListFileName:
+    ##try:
+    Cmake =  SSHFileSync(ssh , FtpClient)
+    ##except:
+    ##    print "SSHFileSync Failed."
+    ##    return
+    szShellCmd = g_Config["ShellCMD"].replace("?" ,  g_Config["ProjectName"])
+    if Cmake == g_Config["CMakeListFileName"]:
         szShellCmd += "cmake .;make clean;make"
     else:
         szShellCmd +="make"
@@ -81,12 +155,11 @@ def main():
     strlist = stdout.readlines()
     print "STDOUT:"
     for str in strlist:
-        print str.decode("gbk")
+        print str.decode("gb2312")
     
     print "STDERR:"
-    strErrlist = stderr.readlines(szShellCmd)
-    for str1 in strErrlist:
-        print str1
+    strErrlist = stderr.read()
+    print strErrlist.decode("gb2312")
 
 if __name__ == '__main__':
     main()

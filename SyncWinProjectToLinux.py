@@ -5,14 +5,11 @@ import sys
 import paramiko
 import ConfigParser
 import pickle
-import sys
 import platform
 
 reload(sys)
 
 sys.setdefaultencoding('utf-8')
-
-
 
 g_Config = {}
 backslash = "/"
@@ -35,20 +32,25 @@ def ReadCfg(cfgFilePath):
     g_Config["ShellCMD"] = '{} ;'.format(config.get("global","ShellCMD"))
 
 def FindExtInDir(dirPath ,  exts):
-    list = exts.split(',')
+    splittags = exts.split(',')
     fileNames = {}
     dirs = []
     for dir  in os.walk(dirPath):
-        if dir[0].find('%s/.svn'.format(g_Config["ProjectAbsolutePath"])) == -1:
-            linuxdir = dir[0][len(g_Config["ProjectAbsolutePath"]+"/"):].replace(backslash , "/")
-            if not linuxdir.strip():
-                dirs.append('%s%s/%s'.format(g_Config["RemoteRoot"] , g_Config["ProjectName"] , linuxdir))
-            for filename in dir[2]:
-                sufix = os.path.splitext(filename)[1][1:]
-                for ext in list:
-                    if ext == sufix :
-                        fullFilePath = dir[0] + "/" + filename
-                        fileNames[fullFilePath] = os.stat(fullFilePath).st_mtime;
+        if dir[0].find('%s/.svn'.format(g_Config["ProjectAbsolutePath"])) >= 0:
+            continue;
+        
+        #所有的目录,为了初始化远程的目录做准备
+        linuxdir = dir[0][len(g_Config["ProjectAbsolutePath"]+"/"):].replace(backslash , "/")
+        if not linuxdir.strip():
+            dirs.append('%s%s/%s'.format(g_Config["RemoteRoot"] , g_Config["ProjectName"] , linuxdir))
+
+        #遍历所有文件,以及最新的更新时间
+        for filename in dir[2]:
+            sufix = os.path.splitext(filename)[1][1:]
+            if sufix in splittags:
+                fullFilePath = '{}{}{}'.format(dir[0] , backslash , filename)
+                fileNames[fullFilePath] = os.stat(fullFilePath).st_mtime
+                    
     return fileNames , dirs;
 
     
@@ -61,7 +63,7 @@ def ReadFilesTime(path):
         with open ( path , 'rb' ) as file: 
             entry = pickle.load(file)
     except IOError:
-        return []
+        return {}
     else:
         return entry
 

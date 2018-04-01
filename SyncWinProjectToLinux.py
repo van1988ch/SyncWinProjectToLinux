@@ -39,7 +39,6 @@ def FindExtInDir(dirPath ,  exts):
     fileNames = {}
     dirs = []
     for dir  in os.walk(dirPath):
-        #g_Config["ProjectRoot"]+"/"+g_Config["ProjectName"]+"/.svn"
         if dir[0].find('%s/.svn'.format(g_Config["ProjectAbsolutePath"])) == -1:
             linuxdir = dir[0][len(g_Config["ProjectAbsolutePath"]+"/"):].replace(backslash , "/")
             if not linuxdir.strip():
@@ -117,9 +116,6 @@ def ChangeDir():
     os.chdir(exePath)
 
 def main():
-    if len(sys.argv) < 3:
-        print "Useage:Commond [config=?][ProjectName=?] \n"
-        return 
     
     ChangeDir()
     try:
@@ -143,7 +139,6 @@ def main():
     ##    print "SSHFileSync Failed."
     ##    return
 
-    #szShellCmd = g_Config["ShellCMD"].replace("?" ,  g_Config["ProjectName"])
     szShellCmd = g_Config["ShellCMD"].format(g_Config["ProjectName"])
     szShellCmd += "cmake .;make clean;make" if Cmake == g_Config["CMakeListFileName"] else "make"
 
@@ -159,4 +154,7 @@ def main():
     print strErrlist.decode("gb2312")
 
 if __name__ == '__main__':
-    main()
+    if len(sys.argv) < 3:
+        print "Useage:Commond [config=?][ProjectName=?] \n"
+    else:
+        main()

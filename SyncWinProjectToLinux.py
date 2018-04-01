@@ -1,11 +1,22 @@
+#!/usr/bin/env python
 # -*- coding: utf8 -*-
+
+__author__ = 'van1988ch'
+
+'''
+主要用来同步本地的项目代码到支持ssh的远程目标主机上面,基于make,cmake编译项目
+'''
 
 import os
 import sys
 import paramiko
 import ConfigParser
-import pickle
 import platform
+
+try:
+    import cPickle as pickle
+except ImportError:
+    import pickle
 
 reload(sys)
 
@@ -17,6 +28,8 @@ if platform.system() == "Windows":
     backslash = "\\";
 
 def ReadCfg(cfgFilePath):
+    '''加载配置文件
+    '''
     config=ConfigParser.ConfigParser()
     config.read(cfgFilePath)
     g_Config["Server"] = config.get("global","Server")
@@ -32,6 +45,9 @@ def ReadCfg(cfgFilePath):
     g_Config["ShellCMD"] = '{} ;'.format(config.get("global","ShellCMD"))
 
 def FindExtInDir(dirPath ,  exts):
+    '''遍历整个目录,过滤.svn目录不同步
+        记录所有的目录,如果项目初始化文件没有生成,则在远程重新生成一次目录
+    '''
     splittags = exts.split(',')
     fileNames = {}
     dirs = []
@@ -55,10 +71,14 @@ def FindExtInDir(dirPath ,  exts):
 
     
 def WriteFilesTime(path , fileModifyTimeMap):
+    '''将所有的同步过的文件记录一下时间,下次用来做增量同步
+    '''
     with open ( path , 'wb' ) as file : 
         pickle.dump( fileModifyTimeMap , file )
 
 def ReadFilesTime(path):
+    '''读取所有的数据,用来做增量同步的时间比较
+    '''
     try:
         with open ( path , 'rb' ) as file: 
             entry = pickle.load(file)
@@ -69,6 +89,8 @@ def ReadFilesTime(path):
 
 
 def SourceSysDir2DestSysDir(winFilePath ,  winDirPath):
+    '''生成远程系统的linux的路径
+    '''
     (filepath,filename)=os.path.split(winFilePath)
     relativePath = winFilePath.replace(winDirPath ,  "")
     linuxrelativePath  = relativePath.replace(backslash , "/")
@@ -112,8 +134,9 @@ def SSHFileSync(ssh , FtpClient):
     WriteFilesTime(g_Config["pickle"] ,  fileModifyTimeMap)
     return CmakeFileName
 
-#修改程序执行目录,为了把序列号文件写入到那个目录和读配置文件的目录
 def ChangeDir():
+    '''修改程序执行目录,为了把序列号文件写入到那个目录和读配置文件的目录
+    '''
     exePath = os.path.split( os.path.realpath( sys.argv[0] ) )[0]
     os.chdir(exePath)
 

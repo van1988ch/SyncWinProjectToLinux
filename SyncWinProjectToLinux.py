@@ -67,14 +67,11 @@ def ReadFilesTime(path):
         return entry
 
 
-def WinDir2LinuxDir(winFilePath ,  winDirPath):
+def SourceSysDir2DestSysDir(winFilePath ,  winDirPath):
     (filepath,filename)=os.path.split(winFilePath)
-    str = g_Config["RemoteRoot"]
     relativePath = winFilePath.replace(winDirPath ,  "")
     linuxrelativePath  = relativePath.replace(backslash , "/")
-    str += g_Config["ProjectName"]
-    str += linuxrelativePath
-    return str
+    return '{}{}{}'.format(g_Config["RemoteRoot"] , g_Config["ProjectName"] , linuxrelativePath)
 
 def SSHFileSync(ssh , FtpClient):
     entry = ReadFilesTime(g_Config["pickle"])
@@ -88,7 +85,7 @@ def SSHFileSync(ssh , FtpClient):
     CmakeFileName = ""
     
     for file in fileModifyTimeMap:
-        szPath = WinDir2LinuxDir(file ,  g_Config["ProjectAbsolutePath"])
+        szPath = SourceSysDir2DestSysDir(file ,  g_Config["ProjectAbsolutePath"])
        
         if file in entry:#上传修改过的文件
             if fileModifyTimeMap[file] > entry[file]:
@@ -105,7 +102,7 @@ def SSHFileSync(ssh , FtpClient):
             CmakeFileName =  g_Config["CMakeListFileName"]
                  
     for file in entry:#删除的文件
-        szPath = WinDir2LinuxDir(file ,  g_Config["ProjectAbsolutePath"])
+        szPath = SourceSysDir2DestSysDir(file ,  g_Config["ProjectAbsolutePath"])
         if file not in fileModifyTimeMap:
             print "Delete:" ,  file ,  szPath
             FtpClient.remove(szPath)

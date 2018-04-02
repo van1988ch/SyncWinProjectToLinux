@@ -52,13 +52,13 @@ def FindExtInDir(dirPath ,  exts):
     fileNames = {}
     dirs = []
     for dir  in os.walk(dirPath):
-        if dir[0].find('%s/.svn'.format(g_Config["ProjectAbsolutePath"])) >= 0:
-            continue;
+        if dir[0].find('{}/.svn'.format(g_Config["ProjectAbsolutePath"])) >= 0:
+            continue
         
         #所有的目录,为了初始化远程的目录做准备
         linuxdir = dir[0][len(g_Config["ProjectAbsolutePath"]+"/"):].replace(backslash , "/")
-        if not linuxdir.strip():
-            dirs.append('%s%s/%s'.format(g_Config["RemoteRoot"] , g_Config["ProjectName"] , linuxdir))
+        if linuxdir:
+            dirs.append('{}{}/{}'.format(g_Config["RemoteRoot"] , g_Config["ProjectName"] , linuxdir))
 
         #遍历所有文件,以及最新的更新时间
         for filename in dir[2]:

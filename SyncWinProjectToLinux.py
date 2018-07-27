@@ -42,7 +42,7 @@ def ReadCfg(cfgFilePath):
     g_Config["SyncFileExt"] = config.get("global","SyncFileExt")
     g_Config["MeteData"] = g_Config["ProjectName"]
     g_Config["CMakeListFileName"] = config.get("global","CMakeListFileName")
-    g_Config["ShellCMD"] = '{} ;'.format(config.get("global","ShellCMD"))
+    g_Config["ShellCMD"] = config.get("global","ShellCMD")
 
 def FindExtInDir(dirPath ,  exts):
     '''遍历整个目录,过滤.svn目录不同步
@@ -52,7 +52,7 @@ def FindExtInDir(dirPath ,  exts):
     fileNames = {}
     dirs = []
     for dir  in os.walk(dirPath):
-        if dir[0].find('{}/.svn'.format(g_Config["ProjectAbsolutePath"])) >= 0:
+        if dir[0].find('{}/.svn'.format(g_Config["ProjectAbsolutePath"])) >= 0 or dir[0].find('{}/.git'.format(g_Config["ProjectAbsolutePath"]))>= 0:
             continue
         
         #所有的目录,为了初始化远程的目录做准备
@@ -128,7 +128,10 @@ def SSHFileSync(ssh , FtpClient):
         szPath = SourceSysDir2DestSysDir(file ,  g_Config["ProjectAbsolutePath"])
         if file not in fileModifyTimeMap:
             print "Delete:" ,  file ,  szPath
-            FtpClient.remove(szPath)
+            try:
+                FtpClient.remove(szPath)
+            except IOError as removeerr:
+                print "Delete failed:" , file , szPath
             CmakeFileName =  g_Config["CMakeListFileName"]
         
     WriteFilesTime(g_Config["pickle"] ,  fileModifyTimeMap)
@@ -149,6 +152,10 @@ def main():
         print "read config error."
         return
     
+    dirpath = ""
+    if len(sys.argv) > 3:
+        dirpath = sys.argv[3]
+    print dirpath
     g_Config["ProjectName"] = sys.argv[2]
     g_Config["MeteData"] = sys.argv[2]
     g_Config["pickle"] = sys.argv[1]+"_"+g_Config["MeteData"]
@@ -164,22 +171,28 @@ def main():
     ##    print "SSHFileSync Failed."
     ##    return
 
-    szShellCmd = g_Config["ShellCMD"].format(g_Config["ProjectName"])
-    szShellCmd += "cmake .;make clean;make" if Cmake == g_Config["CMakeListFileName"] else "make"
+    szShellCmd = '{}{};{}'.format(g_Config["ShellCMD"].format(g_Config["ProjectName"]) , dirpath , "cmake .;make clean;make" if Cmake == g_Config["CMakeListFileName"] and Cmake=="CMakeLists.txt" else g_Config["CMakeListFileName"])
 
     print "Shell Command:" ,  szShellCmd 
     
     stdin ,  stdout ,  stderr = ssh.exec_command(szShellCmd)
     print "STDOUT:"
     strlist = stdout.read()
-    print strlist.decode("gb2312")
+    print strlist.decode("utf8")
     
     print "STDERR:"
     strErrlist = stderr.read()
-    print strErrlist.decode("gb2312")
+    print strErrlist.decode("utf8")
 
 if __name__ == '__main__':
     if len(sys.argv) < 3:
-        print "Useage:Commond [config=?][ProjectName=?] \n"
+        print "Useage:Commond [config=?][ProjectName=?][dir=?] \n"
+    elif sys.argv[1] == "rm":
+        if len(sys.argv) < 4:
+            print "Useage:Commond rm [config=?][ProjectName=?] \n"
+        else:
+            ChangeDir()
+            path = './{}_{}'.format(sys.argv[2] , sys.argv[3])
+            os.remove(path)
     else:
         main()

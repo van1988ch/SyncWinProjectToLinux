@@ -4,7 +4,7 @@
 __author__ = 'van1988ch'
 
 '''
-主要用来同步本地的项目代码到支持ssh的远程目标主机上面,基于make,cmake编译项目
+主要用来同步本地的项目代码到支持ssh的远程目标主机上面,基于make,cmake或者指定shell编译项目
 '''
 
 import os
@@ -45,14 +45,14 @@ def ReadCfg(cfgFilePath):
     g_Config["ShellCMD"] = config.get("global","ShellCMD")
 
 def FindExtInDir(dirPath ,  exts):
-    '''遍历整个目录,过滤.svn目录不同步
+    '''遍历整个目录,过滤.的隐藏目录不同步
         记录所有的目录,如果项目初始化文件没有生成,则在远程重新生成一次目录
     '''
     splittags = exts.split(',')
     fileNames = {}
     dirs = []
     for dir  in os.walk(dirPath):
-        if dir[0].find('{}/.svn'.format(g_Config["ProjectAbsolutePath"])) >= 0 or dir[0].find('{}/.git'.format(g_Config["ProjectAbsolutePath"]))>= 0:
+        if dir[0].find('{}/.'.format(g_Config["ProjectAbsolutePath"])) >= 0:
             continue
         
         #所有的目录,为了初始化远程的目录做准备

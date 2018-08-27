@@ -24,7 +24,7 @@ RemoteRoot = /home/****/Project2/
 ProjectName = *****
 #需要同步的文件后缀
 SyncFileExt=cpp,h,txt,c,xml,a,jar,class,c,cc
-#指定cmake文件
+#指定cmake文件,或者是指定的bash 命令
 CMakeListFileName = CMakeLists.txt
 #文件更新后需要跳转到cmake的目录
 ShellCMD=cd /home/*****/Project2/?/src
@@ -34,3 +34,4 @@ ShellCMD=cd /home/*****/Project2/?/src
 python SyncWinProjectToLinux.py config.ini xxx
 config.ini指定的配置文件上传到那个服务器
 xxx 指定的配置文件ProjectRoot目录项目的项目目录
+
